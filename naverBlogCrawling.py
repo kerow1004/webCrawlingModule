@@ -4,6 +4,7 @@ from urllib.request import urlretrieve
 from urllib import parse
 from bs4 import BeautifulSoup as bs
 import csv, re, os
+
 # blogUrl = "https://section.blog.naver.com/ThemePost.nhn?directoryNo=27&activeDirectorySeq=3&currentPage=1"
 
 
