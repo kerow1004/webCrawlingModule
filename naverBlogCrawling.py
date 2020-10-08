@@ -1,30 +1,22 @@
 from selenium import webdriver
+from selenium.common.exceptions import UnexpectedAlertPresentException
 from urllib.request import urlopen
 from urllib.request import urlretrieve
 from urllib import parse
 from bs4 import BeautifulSoup as bs
-import csv, re, os
+import csv, re, os, datetime
+import pandas as pd
 
 # blogUrl = "https://section.blog.naver.com/ThemePost.nhn?directoryNo=27&activeDirectorySeq=3&currentPage=1"
 
 
 # Q&A페이지 이동
+
+
 def pageMoving(blogURLList):
 
-
-    if os.path.isfile('./blogCrawlingData.csv') == False:
-        with open('./blogCrawlingData.csv', 'a', encoding='utf-8', newline='') as writer_csv:
-            writer = csv.writer(writer_csv, delimiter=',')
-            writer.writerow(["title", "blogurl", "writedate", "maincontant"])
-
-    with open('./blogCrawlingData.csv', 'a', encoding='utf-8', newline='') as writer_csv:
-        writer = csv.writer(writer_csv, delimiter=',')
-
-
-
-        # print(blogURLList)
-
-        for blog_url in blogURLList:
+        for blog_url in blogURLList[84:]:
+            print(blog_url)
             # iframe내의 html 추출
             web_driver.get(blog_url)
             iframes = web_driver.find_elements_by_tag_name("iframe")
@@ -45,19 +37,26 @@ def pageMoving(blogURLList):
                 # web_driver.get(pageNoUrl)
                 # print('=' * 50)
 
-    web_driver.close()
+        web_driver.close()
 
 def blogCrawling(pageSource, blogURL):
 
     bsObject = bs(pageSource, "html.parser")
+
+    today = datetime.datetime.today()
     # print(bsObject)
     try:
         #정규식으로 공백제거
         pattern = re.compile(r'\n|\r')
         if bsObject.find("div", {"class": "pcol1"}) == None:
+            #타이틀 크로링
             title = bsObject.find("span", {"class": "pcol1 itemSubjectBoldfont"}).text
             reTitle = re.sub(pattern, '', title)
+            # 날짜 크로링
             blogDate = bsObject.find("p", {"class": "date fil5 pcol2 _postAddDate"}).text
+            # if not len(blogDate.split('시간')) == 1:
+            #     blogDate = today - datetime.timedelta(hours=int(blogDate.split('시간')[0]))
+            # 블로그 본 크로링
             blogMainContant = bsObject.find("div", {"id": "postViewArea"})
         else:
             #타이틀 크로링
@@ -65,6 +64,9 @@ def blogCrawling(pageSource, blogURL):
             reTitle = re.sub(pattern, '', title)
             # 날짜 크로링
             blogDate = bsObject.find("span", {"class": "se_publishDate pcol2"}).text
+
+            # if not len(blogDate.split('시간')) == 1:
+            #     blogDate = today - datetime.timedelta(hours=int(blogDate.split('시간')[0]))
             # 블로그 본 크로링
             blogMainContant = bsObject.find("div", {"class": "se-main-container"})
         # 이미지주소 크로링
@@ -86,6 +88,10 @@ def blogCrawling(pageSource, blogURL):
         print(err)
         return None, None
 
+    except UnexpectedAlertPresentException as err:
+        print(err)
+        return None, None
+
     return crawlingData, blogImageList
 
 #이미지 저장
@@ -102,27 +108,23 @@ def imageSave(blogImageList, blogTitle):
     # print("image save")
 
 
+
+
 if __name__ == "__main__":
     web_driver = webdriver.Chrome('./driver/ver85/chromedriver')
     web_driver.implicitly_wait(3)
 
-    blogURLList = []
+    df = pd.read_csv("./blogURLData.csv", names=["blogurl"])
+    blogURLList = df.blogurl.to_list()
 
-    # 블로그 게시판 페이지 URL 수집
-    for pageNo in range(1, 51):
-        # print(pageNo,'='*50)
-        web_driver.get("https://section.blog.naver.com/ThemePost.nhn?directoryNo=27&activeDirectorySeq=3&currentPage=" + str(pageNo))
+    if os.path.isfile('./blogCrawlingData.csv') == False:
+        with open('./blogCrawlingData.csv', 'a', encoding='utf-8', newline='') as writer_csv:
+            writer = csv.writer(writer_csv, delimiter=',')
+            writer.writerow(["title", "blogurl", "writedate", "maincontant"])
+            pageMoving(blogURLList)
 
-        for blogNo in range(1, 11):
-            web_driver.implicitly_wait(3)
-            blogURL = web_driver.find_element_by_xpath("""//*[@id="content"]/section/div[2]/div[""" + str(blogNo) + """]/div/div[1]/div[1]/a[1]""").get_attribute('href')
-            blogURLList.append(blogURL)
-
-    pageMoving(blogURLList)
-
-    # for i in blogURLList:
-    #     print(i)
-
-
-
+    else:
+        with open('./blogCrawlingData.csv', 'a', encoding='utf-8', newline='') as writer_csv:
+            writer = csv.writer(writer_csv, delimiter=',')
+            pageMoving(blogURLList)
 
